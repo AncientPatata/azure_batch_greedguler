@@ -1,4 +1,3 @@
-# log_sender.py
 import requests
 
 def create_logging_function(machine_id):
@@ -7,7 +6,7 @@ def create_logging_function(machine_id):
             ngrok_url = url_file.read().strip()
         log_endpoint = f"{ngrok_url}/log"
         def logger(msg):
-            requests.post(log_endpoint, json={"machine": machine_id,"message":msg},timeout=0.0000000001)
+            requests.post(log_endpoint, json={"machine": machine_id,"message":msg})
         return logger
     except Exception as e:
         print(f"Error sending log message: {e}")
