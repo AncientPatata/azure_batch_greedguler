@@ -2,7 +2,7 @@ import requests
 
 def create_logging_function(machine_id):
     try:
-        with open('ngrok_url.txt', 'r') as url_file:
+        with open('./ngrok_url.txt', 'r') as url_file:
             ngrok_url = url_file.read().strip()
         log_endpoint = f"{ngrok_url}/log"
         def logger(msg):
