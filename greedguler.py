@@ -157,4 +157,13 @@ node_list_split = comm.scatter(node_list_split, root=0)
 
 result = allocate_jobs_to_machines_with_heuristic_rx((graph, durations), node_list_split, 8)
 
-print(f"RANK {rank} => {json.dumps(result, indent=4)}")
+result = comm.gather(result, root=0)
+
+if rank == 0:
+    with open("result.json", "w") as f:
+        json.dump(result, f)
+    bucket.upload_local_file(
+        local_file="./result.json",
+        file_name="result.json",
+        file_infos={},
+    )
