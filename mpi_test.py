@@ -1,7 +1,10 @@
 # Save this as mpi_sum.py
 from mpi4py import MPI
-import numpy as np
 from log import *
+
+comm = MPI.COMM_WORLD
+size = comm.Get_size()
+rank = comm.Get_rank()
 
 if rank == 0:
     from b2sdk.v2 import *
@@ -16,10 +19,6 @@ if rank == 0:
 
     b2_api.authorize_account("production", application_key_id, application_key)
     bucket = b2_api.get_bucket_by_name("greedguler")
-
-comm = MPI.COMM_WORLD
-size = comm.Get_size()
-rank = comm.Get_rank()
 
 logger = create_logging_function(rank)
 
