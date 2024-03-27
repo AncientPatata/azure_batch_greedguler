@@ -186,7 +186,7 @@ for run in runs:
     num_machines = run["num_machines"]
     
     if old_path_in_str != path_in_str:
-        full_file_path = os.path.join(directory_path, "./Graphs/" + path_in_str)
+        full_file_path = os.path.join(directory_path, "Graphs/" + path_in_str)
         graph, durations = load_dag_from_json_rx(full_file_path)
     if rank == 0:
         start_time = timeit.default_timer()
