@@ -5,6 +5,7 @@ import rustworkx as rx
 import timeit
 from datetime import datetime, timedelta
 import requests
+from pathlib import Path
 
 def create_logging_function(machine_id):
     try:
@@ -134,36 +135,82 @@ if rank == 0:
 
     b2_api.authorize_account("production", application_key_id, application_key)
     bucket = b2_api.get_bucket_by_name("greedguler")
+    perflogs = []
 
 
 logger = create_logging_function(rank)
 
-logger("Started work")
+runs = [
+    {"path_in_str": "smallComplex.json", "num_machines": 4 },
+    {"path_in_str": "smallComplex.json", "num_machines": 6 },
+    {"path_in_str": "smallComplex.json", "num_machines": 8 },
+    {"path_in_str": "smallRandom.json", "num_machines": 4 },
+    {"path_in_str": "smallRandom.json", "num_machines": 6 },
+    {"path_in_str": "smallRandom.json", "num_machines": 8 },
+    {"path_in_str": "xsmallComplex.json", "num_machines": 4 },
+    {"path_in_str": "smallComplex.json", "num_machines": 2 },
+    {"path_in_str": "xsmallComplex.json", "num_machines": 6 },
+    {"path_in_str": "xsmallComplex.json", "num_machines": 8 },
+    {"path_in_str": "MediumComplex.json", "num_machines": 8 },
+    {"path_in_str": "MediumComplex.json", "num_machines": 10 },
+    {"path_in_str": "MediumComplex.json", "num_machines": 16 },
+    {"path_in_str": "MediumComplex.json", "num_machines": 20 },
+    {"path_in_str": "xlargeComplex.json", "num_machines": 20 },
+    {"path_in_str": "xlargeComplex.json", "num_machines": 26 },
+    {"path_in_str": "xlargeComplex.json", "num_machines": 32 },
+    {"path_in_str": "xlargeComplex.json", "num_machines": 40 },
+    {"path_in_str": "xlargeComplex.json", "num_machines": 48 },
+    
+]
 
-graph, durations = load_dag_from_json_rx("./data/smallComplex.json")
+old_path_in_str = ""
+for run in runs:
+    path_in_str = run["path_in_str"]
+    num_machines = run["num_machines"]
+    
+    if old_path_in_str != path_in_str:
+        graph, durations = load_dag_from_json_rx("./data/" + path_in_str)
 
+    if rank == 0:
+        start_time = timeit.default_timer()
+        logger(f"Started work at graph {path_in_str}")
+
+    if rank == 0:
+        node_list = leveled_topological_sort(graph)
+        # print(f"Node list for machine 0 = {node_list}")
+        node_list_split = split_list_into_sublists_with_remainder(node_list, size)
+    else:
+        node_list_split = None
+
+
+
+    node_list_split = comm.scatter(node_list_split, root=0)
+
+    # print(f"Node list for machine {rank} = {node_list_split}")
+
+    result = allocate_jobs_to_machines_with_heuristic_rx((graph, durations), node_list_split, 8)
+
+    result = comm.gather(result, root=0)
+
+    old_path_in_str = path_in_str
+    
+    if rank == 0:
+        filename = "result_" + path_in_str + "_n=" + str(num_machines)
+        with open(filename , "w") as f:
+            json.dump(result, f)
+        bucket.upload_local_file(
+            local_file="./" + filename,
+            file_name=filename,
+            file_infos={},
+        )
+        elapsed = timeit.default_timer() - start_time
+        perflogs.append({"filename": path_in_str, "elapsed": elapsed, "num_machines": num_machines})
+            
 if rank == 0:
-    node_list = leveled_topological_sort(graph)
-    # print(f"Node list for machine 0 = {node_list}")
-    node_list_split = split_list_into_sublists_with_remainder(node_list, size)
-else:
-    node_list_split = None
-
-
-
-node_list_split = comm.scatter(node_list_split, root=0)
-
-# print(f"Node list for machine {rank} = {node_list_split}")
-
-result = allocate_jobs_to_machines_with_heuristic_rx((graph, durations), node_list_split, 8)
-
-result = comm.gather(result, root=0)
-
-if rank == 0:
-    with open("result.json", "w") as f:
-        json.dump(result, f)
-    bucket.upload_local_file(
-        local_file="./result.json",
-        file_name="result.json",
-        file_infos={},
-    )
+    with open("additional_info.json", "w") as f:
+        json.dump(perflogs, f)
+        bucket.upload_local_file(
+            local_file="./additional_info.json",
+            file_name="additional_info.json",
+            file_infos={},
+        )
