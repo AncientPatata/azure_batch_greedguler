@@ -169,13 +169,15 @@ runs = [
 if rank == 0:
     gdown.download_folder(id="1hwZZT1IgYVfc6dKbM3mDP9ygR2vmhUAQ")
 
+comm.Barrier()
+
 old_path_in_str = ""
 for run in runs:
     path_in_str = run["path_in_str"]
     num_machines = run["num_machines"]
     
     if old_path_in_str != path_in_str:
-        graph, durations = load_dag_from_json_rx("/Graphs/" + path_in_str)
+        graph, durations = load_dag_from_json_rx("./Graphs/" + path_in_str)
 
     if rank == 0:
         start_time = timeit.default_timer()
