@@ -24,6 +24,15 @@ def create_logging_function(machine_id):
 
 
 
+# Get the full path of the current file
+current_file_path = os.path.abspath(__file__)
+
+# Extract the directory path from the full file path
+directory_path = os.path.dirname(current_file_path)
+
+
+
+
 comm = MPI.COMM_WORLD
 size = comm.Get_size()
 rank = comm.Get_rank()
@@ -143,24 +152,24 @@ if rank == 0:
 logger = create_logging_function(rank)
 
 runs = [
-    # {"path_in_str": "smallComplex.json", "num_machines": 4 },
-    # {"path_in_str": "smallComplex.json", "num_machines": 6 },
+    {"path_in_str": "smallComplex.json", "num_machines": 4 },
+    {"path_in_str": "smallComplex.json", "num_machines": 6 },
     {"path_in_str": "smallComplex.json", "num_machines": 8 },
-    # {"path_in_str": "smallRandom.json", "num_machines": 4 },
-    # {"path_in_str": "smallRandom.json", "num_machines": 6 },
+    {"path_in_str": "smallRandom.json", "num_machines": 4 },
+    {"path_in_str": "smallRandom.json", "num_machines": 6 },
     {"path_in_str": "smallRandom.json", "num_machines": 8 },
     {"path_in_str": "xsmallComplex.json", "num_machines": 4 },
-    # {"path_in_str": "xsmallComplex.json", "num_machines": 2 },
+    {"path_in_str": "xsmallComplex.json", "num_machines": 2 },
     {"path_in_str": "xsmallComplex.json", "num_machines": 6 },
-    # {"path_in_str": "xsmallComplex.json", "num_machines": 8 },
-    # {"path_in_str": "MediumComplex.json", "num_machines": 8 },
-    # {"path_in_str": "MediumComplex.json", "num_machines": 10 },
+    {"path_in_str": "xsmallComplex.json", "num_machines": 8 },
+    {"path_in_str": "MediumComplex.json", "num_machines": 8 },
+    {"path_in_str": "MediumComplex.json", "num_machines": 10 },
     {"path_in_str": "MediumComplex.json", "num_machines": 16 },
     {"path_in_str": "MediumComplex.json", "num_machines": 20 },
-    # {"path_in_str": "xlargeComplex.json", "num_machines": 20 },
-    # {"path_in_str": "xlargeComplex.json", "num_machines": 26 },
-    # {"path_in_str": "xlargeComplex.json", "num_machines": 32 },
-    # {"path_in_str": "xlargeComplex.json", "num_machines": 40 },
+    {"path_in_str": "xlargeComplex.json", "num_machines": 20 },
+    {"path_in_str": "xlargeComplex.json", "num_machines": 26 },
+    {"path_in_str": "xlargeComplex.json", "num_machines": 32 },
+    {"path_in_str": "xlargeComplex.json", "num_machines": 40 },
     {"path_in_str": "xlargeComplex.json", "num_machines": 48 },
     
 ]
@@ -177,11 +186,11 @@ for run in runs:
     num_machines = run["num_machines"]
     
     if old_path_in_str != path_in_str:
-        graph, durations = load_dag_from_json_rx("./Graphs/" + path_in_str)
-
+        full_file_path = os.path.join(directory_path, "./Graphs/" + path_in_str)
+        graph, durations = load_dag_from_json_rx(full_file_path)
     if rank == 0:
         start_time = timeit.default_timer()
-        logger(f"Started work at graph {path_in_str}")
+        logger(f"Started work at graph {full_file_path}")
 
     if rank == 0:
         node_list = leveled_topological_sort(graph)
