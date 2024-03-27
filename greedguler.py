@@ -55,6 +55,7 @@ def load_dag_from_json_rx(filepath):
     return graph, durations
 
 def leveled_topological_sort(graph: rx.PyDiGraph):
+    graph = graph.copy()
     new_queue = [n for n in graph.node_indices() if graph.in_degree(n) == 0]
     node_queue = [new_queue]
     while len(new_queue) > 0:
@@ -68,31 +69,33 @@ def leveled_topological_sort(graph: rx.PyDiGraph):
         
         graph.remove_edges_from(out_edges)
         graph.remove_nodes_from(new_queue)
-
+        node_queue.append(new_queue)
         new_queue = [n for n in successors if graph.in_degree(n) == 0]
     return node_queue
 
 def earliest_start_time_optimized(task, graph, schedule):
     # Calculate earliest start time for a task on a machine respecting dependencies
-    print("task : ", task)
-    print("schedule :", schedule) 
     dependencies = list(graph.predecessors(task))
-    print(dependencies)
+    # print("task: ", task)
+    # print("depend: ", dependencies)
+    # print("schedule: ", schedule)
     if not dependencies:
         return 0
     else:
-        max_end_time = max([job['end_time'] for machine_schedule in schedule for job in machine_schedule if job['job_index'] in dependencies])
+        max_end_time = max(schedule.get(job_index, {"end_time": 0})["end_time"] for job_index in dependencies )
         return max_end_time
 
-def allocate_jobs_to_machines_with_heuristic_rx(graph: (rx.PyDiGraph, dict),node_list, num_machines=8):
-    man_graph = graph[0].copy()
+def allocate_jobs_to_machines_with_heuristic_rx(graph: (rx.PyDiGraph, dict),queue_list, num_machines=8):
+    man_graph = graph[0]
     durations = graph[1]
     jobs = {}
+    
+    logger(json.dumps({"queue_list": queue_list}))
 
     free_time = [0] * num_machines
 
-
-    for queue in node_list:
+    
+    for queue in queue_list:
         for job in queue:
             job_index = man_graph.get_node_data(job)
             # print("Job : ", job)
@@ -105,22 +108,16 @@ def allocate_jobs_to_machines_with_heuristic_rx(graph: (rx.PyDiGraph, dict),node
             jobs[job_index] = {'start_time': start_time, 'end_time': end_time,
                                                                 'duration': end_time - start_time, 'machine_index': machine}
             free_time[machine] = end_time
+
+    return jobs
         
 def split_list_into_sublists_with_remainder(lst, n):
-    # Split list into equal sublists of size 'n'
-    sublists = [lst[i:i + n] for i in range(0, len(lst) - len(lst) % n, n)]
-    
-    # Check for any remaining elements that didn't fit into the equal sublists
-    remainder = lst[len(lst) - len(lst) % n:]
-    
-    # If there is a remainder, append it to the last sublist
-    if remainder:
-        if sublists:
-            sublists[-1].extend(remainder)
-        else:
-            sublists.append(remainder)
-    
-    return sublists
+    chunk_size = len(lst) // n
+    result = []
+    for i in range(n-1):
+        result.append(lst[chunk_size*i: chunk_size* (i+1)])
+    result.append(lst[chunk_size*(n-1):])
+    return result
 
 
 ## Upload results to backblaze storage bucket (Azure storage permission problem..)
@@ -147,13 +144,17 @@ graph, durations = load_dag_from_json_rx("./data/smallComplex.json")
 
 if rank == 0:
     node_list = leveled_topological_sort(graph)
+    # print(f"Node list for machine 0 = {node_list}")
     node_list_split = split_list_into_sublists_with_remainder(node_list, size)
 else:
     node_list_split = None
-    
-comm.scatter(node_list_split, root=0)
 
-result = allocate_jobs_to_machines_with_heuristic_rx(graph, node_list_split, 8)
 
-logger("Result : ", result)
 
+node_list_split = comm.scatter(node_list_split, root=0)
+
+# print(f"Node list for machine {rank} = {node_list_split}")
+
+result = allocate_jobs_to_machines_with_heuristic_rx((graph, durations), node_list_split, 8)
+
+print(f"RANK {rank} => {json.dumps(result, indent=4)}")
