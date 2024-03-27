@@ -1,3 +1,8 @@
 data/*
 mpi_output.txt
 result*
+Graphs/xsmallComplex.json
+Graphs/xlargeComplex.json
+Graphs/smallRandom.json
+Graphs/smallComplex.json
+Graphs/MediumComplex.json

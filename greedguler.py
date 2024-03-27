@@ -215,6 +215,8 @@ for run in runs:
         perflogs.append({"filename": path_in_str, "elapsed": elapsed, "num_machines": num_machines})
         logger(json.dumps(perflogs))
             
+    comm.Barrier()
+    
 if rank == 0:
     with open("additional_info.json", "w") as f:
         json.dump(perflogs, f)
