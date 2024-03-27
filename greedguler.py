@@ -4,7 +4,20 @@ import json
 import rustworkx as rx
 import timeit
 from datetime import datetime, timedelta
-from log import *
+import requests
+
+def create_logging_function(machine_id):
+    try:
+        with open('./ngrok_url.txt', 'r') as url_file:
+            ngrok_url = url_file.read().strip()
+        log_endpoint = f"{ngrok_url}/log"
+        def logger(msg):
+            requests.post(log_endpoint, json={"machine": machine_id,"message":msg})
+        return logger
+    except Exception as e:
+        print(f"Error sending log message: {e}")
+        return print
+
 
 
 comm = MPI.COMM_WORLD
@@ -91,24 +104,6 @@ def allocate_jobs_to_machines_with_heuristic_rx(graph: (rx.PyDiGraph, dict),node
             jobs[job_index] = {'start_time': start_time, 'end_time': end_time,
                                                                 'duration': end_time - start_time, 'machine_index': machine}
             free_time[machine] = end_time
-
-        # TODO: Do this but for this 
-        successors = []
-        out_edges = []
-        for q in queue:
-            for n in man_graph.successor_indices(q):
-                out_edges.append((q,n))
-                successors.append(n)
-        successors = set(successors)
-    
-        man_graph.remove_edges_from(out_edges)
-        man_graph.remove_nodes_from(queue)
-        # print("QUEUE: ", queue)
-        # def edge_filter(edge):
-        #     print("EDGE: ", edge)
-        #     return edge[0] in queue
-
-        queue = [n for n in successors if man_graph.in_degree(n) == 0]
         
 def split_list_into_sublists_with_remainder(lst, n):
     # Split list into equal sublists of size 'n'
