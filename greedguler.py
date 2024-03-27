@@ -11,10 +11,11 @@ import gdown
 
 def create_logging_function(machine_id):
     try:
-        with open('./ngrok_url.txt', 'r') as url_file:
-            ngrok_url = url_file.read().strip()
-        log_endpoint = f"{ngrok_url}/log"
+        # with open('./ngrok_url.txt', 'r') as url_file:
+        #     ngrok_url = url_file.read().strip()
+        log_endpoint = "https://1b5b-138-195-40-100.ngrok-free.app/log"
         def logger(msg):
+            print(f"machine {machine_id} =>" + str(msg))
             requests.post(log_endpoint, json={"machine": machine_id,"message":msg})
         return logger
     except Exception as e:
@@ -28,7 +29,7 @@ size = comm.Get_size()
 rank = comm.Get_rank()
 
 def load_dag_from_json_rx(filepath):
-    print("Loading DAG from JSON file " + filepath + "....")  # TODO: Custom logging with control of verbosity.
+    logger("Loading DAG from JSON file " + filepath + "....")  # TODO: Custom logging with control of verbosity.
     start_time = timeit.default_timer()
     graph = rx.PyDiGraph()
     durations = {}
@@ -93,7 +94,6 @@ def allocate_jobs_to_machines_with_heuristic_rx(graph: (rx.PyDiGraph, dict),queu
     durations = graph[1]
     jobs = {}
     
-    logger(json.dumps({"queue_list": queue_list}))
 
     free_time = [0] * num_machines
 
@@ -143,24 +143,24 @@ if rank == 0:
 logger = create_logging_function(rank)
 
 runs = [
-    {"path_in_str": "smallComplex.json", "num_machines": 4 },
-    {"path_in_str": "smallComplex.json", "num_machines": 6 },
+    # {"path_in_str": "smallComplex.json", "num_machines": 4 },
+    # {"path_in_str": "smallComplex.json", "num_machines": 6 },
     {"path_in_str": "smallComplex.json", "num_machines": 8 },
-    {"path_in_str": "smallRandom.json", "num_machines": 4 },
-    {"path_in_str": "smallRandom.json", "num_machines": 6 },
+    # {"path_in_str": "smallRandom.json", "num_machines": 4 },
+    # {"path_in_str": "smallRandom.json", "num_machines": 6 },
     {"path_in_str": "smallRandom.json", "num_machines": 8 },
     {"path_in_str": "xsmallComplex.json", "num_machines": 4 },
-    {"path_in_str": "smallComplex.json", "num_machines": 2 },
+    # {"path_in_str": "xsmallComplex.json", "num_machines": 2 },
     {"path_in_str": "xsmallComplex.json", "num_machines": 6 },
-    {"path_in_str": "xsmallComplex.json", "num_machines": 8 },
-    {"path_in_str": "MediumComplex.json", "num_machines": 8 },
-    {"path_in_str": "MediumComplex.json", "num_machines": 10 },
+    # {"path_in_str": "xsmallComplex.json", "num_machines": 8 },
+    # {"path_in_str": "MediumComplex.json", "num_machines": 8 },
+    # {"path_in_str": "MediumComplex.json", "num_machines": 10 },
     {"path_in_str": "MediumComplex.json", "num_machines": 16 },
     {"path_in_str": "MediumComplex.json", "num_machines": 20 },
-    {"path_in_str": "xlargeComplex.json", "num_machines": 20 },
-    {"path_in_str": "xlargeComplex.json", "num_machines": 26 },
-    {"path_in_str": "xlargeComplex.json", "num_machines": 32 },
-    {"path_in_str": "xlargeComplex.json", "num_machines": 40 },
+    # {"path_in_str": "xlargeComplex.json", "num_machines": 20 },
+    # {"path_in_str": "xlargeComplex.json", "num_machines": 26 },
+    # {"path_in_str": "xlargeComplex.json", "num_machines": 32 },
+    # {"path_in_str": "xlargeComplex.json", "num_machines": 40 },
     {"path_in_str": "xlargeComplex.json", "num_machines": 48 },
     
 ]
@@ -213,6 +213,7 @@ for run in runs:
         )
         elapsed = timeit.default_timer() - start_time
         perflogs.append({"filename": path_in_str, "elapsed": elapsed, "num_machines": num_machines})
+        logger(json.dumps(perflogs))
             
 if rank == 0:
     with open("additional_info.json", "w") as f:
