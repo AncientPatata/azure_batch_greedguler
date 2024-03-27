@@ -6,6 +6,7 @@ import timeit
 from datetime import datetime, timedelta
 import requests
 from pathlib import Path
+import os
 
 def create_logging_function(machine_id):
     try:
@@ -169,7 +170,7 @@ for run in runs:
     num_machines = run["num_machines"]
     
     if old_path_in_str != path_in_str:
-        graph, durations = load_dag_from_json_rx("./data/" + path_in_str)
+        graph, durations = load_dag_from_json_rx(os.path.dirname(__file__) + "/data/" + path_in_str)
 
     if rank == 0:
         start_time = timeit.default_timer()
