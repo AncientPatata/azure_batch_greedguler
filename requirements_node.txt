@@ -1,4 +1,4 @@
-mpi4py==3.0.3
+mpi4py
 azure-storage==0.36.0
 rustworkx
 b2sdk
