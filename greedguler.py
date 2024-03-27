@@ -70,16 +70,15 @@ def earliest_start_time_optimized(task, graph, schedule):
         max_end_time = max([job['end_time'] for machine_schedule in schedule for job in machine_schedule if job['job_index'] in dependencies])
         return max_end_time
 
-def allocate_jobs_to_machines_with_heuristic_rx(graph: (rx.PyDiGraph, dict), num_machines=8):
+def allocate_jobs_to_machines_with_heuristic_rx(graph: (rx.PyDiGraph, dict),node_list, num_machines=8):
     man_graph = graph[0].copy()
     durations = graph[1]
     jobs = {}
-    queue = [n for n in man_graph.node_indices() if man_graph.in_degree(n) == 0]
 
     free_time = [0] * num_machines
 
 
-    while len(queue) > 0:
+    for queue in node_list:
         for job in queue:
             job_index = man_graph.get_node_data(job)
             # print("Job : ", job)
@@ -110,6 +109,23 @@ def allocate_jobs_to_machines_with_heuristic_rx(graph: (rx.PyDiGraph, dict), num
         #     return edge[0] in queue
 
         queue = [n for n in successors if man_graph.in_degree(n) == 0]
+        
+def split_list_into_sublists_with_remainder(lst, n):
+    # Split list into equal sublists of size 'n'
+    sublists = [lst[i:i + n] for i in range(0, len(lst) - len(lst) % n, n)]
+    
+    # Check for any remaining elements that didn't fit into the equal sublists
+    remainder = lst[len(lst) - len(lst) % n:]
+    
+    # If there is a remainder, append it to the last sublist
+    if remainder:
+        if sublists:
+            sublists[-1].extend(remainder)
+        else:
+            sublists.append(remainder)
+    
+    return sublists
+
 
 ## Upload results to backblaze storage bucket (Azure storage permission problem..)
 if rank == 0:
@@ -135,6 +151,6 @@ graph, durations = load_dag_from_json_rx("./smallComplex.json")
 
 if rank == 0:
     node_list = leveled_topological_sort(graph)
-    chunk_size = len(node_list)//size
-    remainder = len(node_list) % size
-    nlist = list(zip(*[iter(node_list)] * chunk_size))
+    node_list_split = split_list_into_sublists_with_remainder(node_list, size)
+
+
