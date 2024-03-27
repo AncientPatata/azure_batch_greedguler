@@ -55,21 +55,22 @@ def load_dag_from_json_rx(filepath):
     return graph, durations
 
 def leveled_topological_sort(graph: rx.PyDiGraph):
-    node_queue = [[n for n in graph.node_indices() if graph.in_degree(n) == 0]]
-    not_done= True 
-    while not_done:
+    new_queue = [n for n in graph.node_indices() if graph.in_degree(n) == 0]
+    node_queue = [new_queue]
+    while len(new_queue) > 0:
         successors = []
         out_edges = []
-        for q in node_queue:
+        for q in new_queue:
             for n in graph.successor_indices(q):
                 out_edges.append((q,n))
                 successors.append(n)
         successors = set(successors)
         
         graph.remove_edges_from(out_edges)
-        graph.remove_nodes_from(node_queue)
+        graph.remove_nodes_from(new_queue)
 
-        node_queue = [n for n in successors if graph.in_degree(n) == 0]
+        new_queue = [n for n in successors if graph.in_degree(n) == 0]
+    return node_queue
 
 def earliest_start_time_optimized(task, graph, schedule):
     # Calculate earliest start time for a task on a machine respecting dependencies
@@ -142,10 +143,17 @@ logger = create_logging_function(rank)
 
 logger("Started work")
 
-graph, durations = load_dag_from_json_rx("./smallComplex.json")
+graph, durations = load_dag_from_json_rx("./data/smallComplex.json")
 
 if rank == 0:
     node_list = leveled_topological_sort(graph)
     node_list_split = split_list_into_sublists_with_remainder(node_list, size)
+else:
+    node_list_split = None
+    
+comm.scatter(node_list_split, root=0)
 
+result = allocate_jobs_to_machines_with_heuristic_rx(graph, node_list_split, 8)
+
+logger("Result : ", result)
 
