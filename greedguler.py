@@ -68,22 +68,23 @@ def load_dag_from_json_rx(filepath):
     return graph, durations
 
 def leveled_topological_sort(graph: rx.PyDiGraph):
-    graph = graph.copy()
-    new_queue = [n for n in graph.node_indices() if graph.in_degree(n) == 0]
+    loc_graph = graph.copy()
+    new_queue = [n for n in loc_graph.node_indices() if loc_graph.in_degree(n) == 0]
     node_queue = [new_queue]
     while len(new_queue) > 0:
         successors = []
         out_edges = []
         for q in new_queue:
-            for n in graph.successor_indices(q):
+            for n in loc_graph.successor_indices(q):
                 out_edges.append((q,n))
                 successors.append(n)
         successors = set(successors)
         
-        graph.remove_edges_from(out_edges)
-        graph.remove_nodes_from(new_queue)
+        loc_graph.remove_edges_from(out_edges)
+        loc_graph.remove_nodes_from(new_queue)
         node_queue.append(new_queue)
-        new_queue = [n for n in successors if graph.in_degree(n) == 0]
+        new_queue = [n for n in successors if loc_graph.in_degree(n) == 0]
+    del loc_graph
     return node_queue
 
 def earliest_start_time_optimized(task, graph, schedule):
@@ -152,25 +153,29 @@ if rank == 0:
 logger = create_logging_function(rank)
 
 runs = [
-    {"path_in_str": "smallComplex.json", "num_machines": 4 },
-    {"path_in_str": "smallComplex.json", "num_machines": 6 },
-    {"path_in_str": "smallComplex.json", "num_machines": 8 },
-    {"path_in_str": "smallRandom.json", "num_machines": 4 },
-    {"path_in_str": "smallRandom.json", "num_machines": 6 },
-    {"path_in_str": "smallRandom.json", "num_machines": 8 },
-    {"path_in_str": "xsmallComplex.json", "num_machines": 4 },
-    {"path_in_str": "xsmallComplex.json", "num_machines": 2 },
-    {"path_in_str": "xsmallComplex.json", "num_machines": 6 },
-    {"path_in_str": "xsmallComplex.json", "num_machines": 8 },
-    {"path_in_str": "MediumComplex.json", "num_machines": 8 },
-    {"path_in_str": "MediumComplex.json", "num_machines": 10 },
-    {"path_in_str": "MediumComplex.json", "num_machines": 16 },
-    {"path_in_str": "MediumComplex.json", "num_machines": 20 },
-    {"path_in_str": "xlargeComplex.json", "num_machines": 20 },
-    {"path_in_str": "xlargeComplex.json", "num_machines": 26 },
-    {"path_in_str": "xlargeComplex.json", "num_machines": 32 },
-    {"path_in_str": "xlargeComplex.json", "num_machines": 40 },
-    {"path_in_str": "xlargeComplex.json", "num_machines": 48 },
+    # {"path_in_str": "smallComplex.json", "num_machines": 4 },
+    # {"path_in_str": "smallComplex.json", "num_machines": 6 },
+    # {"path_in_str": "smallComplex.json", "num_machines": 8 },
+    # {"path_in_str": "smallRandom.json", "num_machines": 4 },
+    # {"path_in_str": "smallRandom.json", "num_machines": 6 },
+    # {"path_in_str": "smallRandom.json", "num_machines": 8 },
+    # {"path_in_str": "xsmallComplex.json", "num_machines": 4 },
+    # {"path_in_str": "xsmallComplex.json", "num_machines": 2 },
+    # {"path_in_str": "xsmallComplex.json", "num_machines": 6 },
+    # {"path_in_str": "xsmallComplex.json", "num_machines": 8 },
+    # {"path_in_str": "MediumComplex.json", "num_machines": 8 },
+    # {"path_in_str": "MediumComplex.json", "num_machines": 10 },
+    # {"path_in_str": "MediumComplex.json", "num_machines": 16 },
+    # {"path_in_str": "MediumComplex.json", "num_machines": 20 },
+    # {"path_in_str": "xlargeComplex.json", "num_machines": 20 },
+    # {"path_in_str": "xlargeComplex.json", "num_machines": 26 },
+    # {"path_in_str": "xlargeComplex.json", "num_machines": 32 },
+    # {"path_in_str": "xlargeComplex.json", "num_machines": 40 },
+    # {"path_in_str": "xlargeComplex.json", "num_machines": 48 },
+    # {"path_in_str": "MediumComplex.json", "num_machines": 10 },
+    # {"path_in_str": "largeComplex.json", "num_machines": 8 },
+    {"path_in_str": "xlargeComplex.json", "num_machines": 64 },
+    
     
 ]
 
@@ -196,6 +201,7 @@ for run in runs:
         node_list = leveled_topological_sort(graph)
         # print(f"Node list for machine 0 = {node_list}")
         node_list_split = split_list_into_sublists_with_remainder(node_list, size)
+        del node_list
     else:
         node_list_split = None
 
@@ -212,21 +218,22 @@ for run in runs:
     old_path_in_str = path_in_str
     
     if rank == 0:
-        filename = "result_" + path_in_str + "_n=" + str(num_machines)
-        with open(filename , "w") as f:
-            json.dump(result, f)
-        bucket.upload_local_file(
-            local_file="./" + filename,
-            file_name=filename,
-            file_infos={},
-        )
         elapsed = timeit.default_timer() - start_time
+        filename = "result_" + path_in_str + "_n=" + str(num_machines)
+        # with open(filename , "w") as f:
+        #     json.dump(result, f)
+        # bucket.upload_local_file(
+        #     local_file="./" + filename,
+        #     file_name=filename,
+        #     file_infos={},
+        # )
         perflogs.append({"filename": path_in_str, "elapsed": elapsed, "num_machines": num_machines})
         logger(json.dumps(perflogs))
-            
+        del result
     comm.Barrier()
     
 if rank == 0:
+    print(perflogs)
     with open("additional_info.json", "w") as f:
         json.dump(perflogs, f)
         bucket.upload_local_file(
@@ -234,3 +241,5 @@ if rank == 0:
             file_name="additional_info.json",
             file_infos={},
         )
+
+comm.Barrier()
